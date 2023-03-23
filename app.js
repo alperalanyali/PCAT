@@ -16,7 +16,9 @@ app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(fileUpload());
-app.use(methodOverride('_method'))
+app.use(methodOverride('_method',{
+  methods:['POST','GET']
+}))
 
 mongoose
   .connect(
@@ -88,6 +90,16 @@ app.put('/photos/:id', async (req, res) => {
   photo.save();
   
   res.redirect(`/photos/${req.params.id}`)
+});
+
+app.delete("/photos/:id",async (req,res)=>{
+  let id = req.params.id;  
+
+  const photo = await Photo.findById(id);  
+  let deleteImage = __dirname+ "/public/"+photo.image;
+  fs.unlinkSync(deleteImage);
+   await Photo.findByIdAndDelete(photo._id);
+  res.redirect('/');
 });
 
 const port = 3000;
