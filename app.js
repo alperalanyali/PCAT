@@ -7,11 +7,12 @@ const mongoose = require('mongoose');
 const fileUpload = require('express-fileupload');
 const methodOverride = require('method-override');
 const Photo = require('./models/photo');
-
+const  photoController= require('./controllers/photoController');
+const pageController = require('./controllers/pageController');
 const app = express();
 
 app.set('view engine', 'ejs');
-
+//MIDDLEWARE
 app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -32,75 +33,27 @@ mongoose
     console.log('MongoDb bağlantı kuruldu');
   });
 
-app.get('/', async (req, res) => {
-  const photos = await Photo.find({});
 
-  res.render('index', { photos });
-});
 
-app.get('/about', (req, res) => {
-  res.render('about');
-});
 
-app.get('/add', (req, res) => {
-  res.render('add');
-});
+//ROUTES
+app.get('/',photoController.getAllPhotos );
+app.get('/photos/:id',photoController.getPhoto);
+app.post('/photos', photoController.createPhoto);
+app.put('/photos/:id', photoController.updatePhoto);
+app.delete("/photos/:id",photoController.deletePhoto);
 
-app.get('/photos/:id', async (req, res) => {
-  console.log(req.params.id);
-  let id = req.params.id;
-  var photo = await Photo.findById(id);
-  res.render('photo', { photo });
-});
+app.get('/about',pageController.getAboutPage );
+app.get('/add', pageController.getAddPage);
+app.get('/photos/edit/:id',pageController.getEditPage);
 
-app.post('/photos', async (req, res) => {
-  const { title, description, imageUrl } = req.body;
-  const uploadDir = 'public/uploads/';
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir);
-  }
 
-  let image = req.files.image;
-  let path = __dirname + '/public/uploads/' + image.name;
 
-  image.mv(path, async () => {
-    const newPhoto = new Photo({
-      title: title,
-      description: description,
-      image: '/uploads/' + image.name,
-    });
-    await newPhoto.save();
-    console.log(newPhoto);
-    res.redirect('/');
-  });
-  // res.json({message:"dsfafsfs"})
-});
 
-app.get('/photos/edit/:id', async (req, res) => {
-  let id = req.params.id;
-  var photo = await Photo.findById(id);
-  res.render('edit', { photo });
-});
 
-app.put('/photos/:id', async (req, res) => {
-  let id = req.params.id;
-  var photo = await Photo.findById(id);
-  photo.title = req.body.title;
-  photo.description = req.body.description;
-  photo.save();
-  
-  res.redirect(`/photos/${req.params.id}`)
-});
 
-app.delete("/photos/:id",async (req,res)=>{
-  let id = req.params.id;  
 
-  const photo = await Photo.findById(id);  
-  let deleteImage = __dirname+ "/public/"+photo.image;
-  fs.unlinkSync(deleteImage);
-   await Photo.findByIdAndDelete(photo._id);
-  res.redirect('/');
-});
+
 
 const port = 3000;
 
