@@ -5,9 +5,14 @@ const mongoose = require('mongoose');
 
 
 exports.getAllPhotos = async (req, res) => {
-    const photos = await Photo.find({});
-  
-    res.render('index', { photos });
+    // console.log(req.query);
+    const page = req.query.page || 1;
+    const photoPerPage = 2;
+    const totalPhotos = await Photo.find().countDocuments(); 
+    const photos = await Photo.find({}).sort("-dateCreated").limit(photoPerPage).skip((page-1)*photoPerPage);
+    res.render('index', { photos:photos,current:page,pages:Math.ceil((totalPhotos / photoPerPage)) });
+    // const photos = await Photo.find({}).sort("-dateCreated");
+    // res.render('index', { photos });
   }
 
   exports.getPhoto = async (req, res) => {
@@ -18,26 +23,24 @@ exports.getAllPhotos = async (req, res) => {
   }
 
   exports.createPhoto = async (req, res) => {
-    const { title, description, imageUrl } = req.body;
-    const uploadDir = 'public/uploads/';
+    //Eğer klasör yoksa oluşturacak
+    const uploadDir = 'public/uploads';
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir);
     }
+    // Yükeldiğimiz dosyayı yakalayıp isteiğimiz bilgileri değişkenleri aktarıyoruz
+    let uploadeImage = req.files.image;
+    let uploadPath = __dirname + '/../public/uploads/' + uploadeImage.name;
   
-    let image = req.files.image;
-    let path = __dirname + '/public/uploads/' + image.name;
-  
-    image.mv(path, async () => {
-      const newPhoto = new Photo({
-        title: title,
-        description: description,
-        image: '/uploads/' + image.name,
+    // Yakaladığımız dosyayı .mv metodu ile yukarda belirlediğimiz path'a taşıyoruz. Dosya taşıma işlemi sırasında hata olmadı ise req.body ve içerisindeki image'nin dosya yolu ve adıyla beraber database kaydediyoruz
+    uploadeImage.mv(uploadPath, async (err) => {
+      if (err) console.log(err);    // Bu kısımda önemli olan add.ejs'nin içerisine form elemanı olarak encType="multipart/form-data" atribute eklemek
+      await Photo.create({
+        ...req.body,
+        image: '/uploads/' + uploadeImage.name,
       });
-      await newPhoto.save();
-      console.log(newPhoto);
-      res.redirect('/');
     });
-    // res.json({message:"dsfafsfs"})
+    res.redirect('/');
   }
 
 
@@ -56,7 +59,10 @@ exports.getAllPhotos = async (req, res) => {
   
     const photo = await Photo.findById(id);  
     let deleteImage = __dirname+ "/public/"+photo.image;
-    fs.unlinkSync(deleteImage);
+    // if(fs.existsSync(deleteImage)){
+      fs.unlinkSync(deleteImage);   
+    // }
+
      await Photo.findByIdAndDelete(photo._id);
     res.redirect('/');
   }
